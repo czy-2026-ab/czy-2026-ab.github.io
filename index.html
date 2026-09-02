@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🧭 3D 迷宫 · 困难模式</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #0a0a1a;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-size: 16px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            pointer-events: none;
+            z-index: 10;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        #info span { color: #ffd54f; }
+        #size-badge {
+            background: rgba(255, 215, 0, 0.2);
+            padding: 2px 12px;
+            border-radius: 12px;
+            margin-left: 8px;
+            font-size: 14px;
+            color: #ffd54f;
+        }
+        #controls-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            pointer-events: none;
+            z-index: 10;
+            white-space: nowrap;
+        }
+        #controls-hint kbd {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 2px 10px;
+            border-radius: 4px;
+            color: #fff;
+            margin: 0 2px;
+        }
+        #win-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px 50px;
+            border-radius: 20px;
+            font-size: 32px;
+            font-weight: 700;
+            backdrop-filter: blur(8px);
+            border: 2px solid #ffd54f;
+            box-shadow: 0 0 60px rgba(255, 215, 0, 0.3);
+            display: none;
+            z-index: 20;
+            text-align: center;
+            pointer-events: none;
+        }
+        #win-message small {
+            display: block;
+            font-size: 18px;
+            font-weight: 400;
+            margin-top: 12px;
+            color: #aaa;
+        }
+        #restart-btn {
+            position: absolute;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 32px;
+            background: #ffd54f;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 15;
+            box-shadow: 0 4px 20px rgba(255, 213, 79, 0.4);
+            display: none;
+            transition: all 0.2s;
+        }
+        #restart-btn:hover {
+            transform: translateX(-50%) scale(1.05);
+            background: #ffe082;
+        }
+        #loading-msg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 20px;
+            z-index: 30;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px 40px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            pointer-events: none;
+        }
+        #loading-msg .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top-color: #ffd54f;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .difficulty-selector {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            display: flex;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 16px;
+            border-radius: 30px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: auto;
+        }
+        .difficulty-selector button {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #aaa;
+            padding: 4px 14px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .difficulty-selector button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        .difficulty-selector button.active {
+            background: #ffd54f;
+            color: #1a1a2e;
+            border-color: #ffd54f;
+            font-weight: 600;
+        }
+        @media (max-width: 600px) {
+            #info { font-size: 13px; padding: 6px 16px; top: 12px; }
+            #controls-hint { font-size: 11px; padding: 4px 12px; bottom: 18px; white-space: normal; }
+            #win-message { font-size: 24px; padding: 20px 30px; }
+            #win-message small { font-size: 14px; }
+            #restart-btn { padding: 10px 24px; font-size: 14px; bottom: 70px; }
+            #loading-msg { font-size: 16px; padding: 15px 25px; }
+            .difficulty-selector { bottom: 60px; padding: 4px 10px; gap: 6px; }
+            .difficulty-selector button { font-size: 11px; padding: 3px 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-msg">
+        <div class="spinner"></div>
+        <div>正在加载 3D 引擎...</div>
+    </div>
+
+    <div id="info">
+        🧭 找到 <span>金色出口</span> 逃离迷宫
+        <span id="size-badge">21x21</span>
+    </div>
+    <div id="controls-hint">
+        <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> 移动 &nbsp;·&nbsp; 鼠标拖动视角 &nbsp;·&nbsp; <kbd>Shift</kbd> 加速
+    </div>
+    <div id="win-message">
+        🎉 你逃出去了！<small>迷宫已破解</small>
+    </div>
+    <button id="restart-btn">🔄 重新生成迷宫</button>
+
+    <div class="difficulty-selector">
+        <button data-size="11">简单</button>
+        <button data-size="21" class="active">困难</button>
+        <button data-size="31">大师</button>
+    </div>
+
+    <!-- 使用国内 CDN 镜像，提高加载成功率 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+
+    <script>
+        // 检测 three 是否加载成功
+        if (typeof THREE === 'undefined') {
+            document.getElementById('loading-msg').innerHTML = '❌ 3D 引擎加载失败，请检查网络或刷新重试。';
+            throw new Error('Three.js 未加载');
+        } else {
+            document.getElementById('loading-msg').style.display = 'none';
+        }
+
+        // ==================== 配置 ====================
+        let MAZE_SIZE = 21; // 默认困难
+        const CELL_SIZE = 2;
+        const WALL_HEIGHT = 2.5;
+        const PLAYER_HEIGHT = 1.6;
+        const MOVE_SPEED = 3.5;
+        const SPRINT_MULTIPLIER = 2.0;
+        const MOUSE_SENSITIVITY = 0.002;
+
+        // ==================== 迷宫生成（递归回溯，增加死路密度） ====================
+        function generateMaze(size) {
+            const grid = [];
+            for (let r = 0; r < size; r++) {
+                grid[r] = new Array(size).fill(1);
+            }
+            const startX = 1,
+                startY = 1;
+            grid[startY][startX] = 0;
+            const stack = [{ x: startX, y: startY }];
+            const dirs = [
+                [0, -2],
+                [0, 2],
+                [-2, 0],
+                [2, 0]
+            ];
+            while (stack.length > 0) {
+                const current = stack[stack.length - 1];
+                const { x, y } = current;
+                // 随机打乱方向，增加随机性
+                const shuffled = dirs.sort(() => Math.random() - 0.5);
+                let moved = false;
+                for (const [dx, dy] of shuffled) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    if (nx > 0 && nx < size - 1 && ny > 0 && ny < size - 1 && grid[ny][nx] === 1) {
+                        grid[ny][nx] = 0;
+                        grid[y + dy / 2][x + dx / 2] = 0;
+                        stack.push({ x: nx, y: ny });
+                        moved = true;
+                        break;
+                    }
+                }
+                if (!moved) stack.pop();
+            }
+            // 额外增加一些死路：随机打通一些墙壁（增加复杂度）
+            const extraWalls = Math.floor(size * size * 0.03); // 3% 额外开口
+            for (let i = 0; i < extraWalls; i++) {
+                const rx = 1 + Math.floor(Math.random() * (size - 2));
+                const ry = 1 + Math.floor(Math.random() * (size - 2));
+                if (grid[ry][rx] === 1) {
+                    // 检查是否会产生环，简单起见直接打通（可能会产生环，但会增加复杂度）
+                    grid[ry][rx] = 0;
+                }
+            }
+
+            const endX = size - 2,
+                endY = size - 2;
+            grid[endY][endX] = 0;
+            // 确保终点周围畅通
+            [
+                [0, -1],
+                [0, 1],
+                [-1, 0],
+                [1, 0]
+            ].forEach(([dx, dy]) => {
+                const nx = endX + dx,
+                    ny = endY + dy;
+                if (nx >= 0 && nx < size && ny >= 0 && ny < size && grid[ny][nx] === 1) {
+                    grid[ny][nx] = 0;
+                }
+            });
+
+            return { grid, start: { x: startX, y: startY }, end: { x: endX, y: endY } };
+        }
+
+        // ==================== 场景 ====================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        scene.fog = new THREE.Fog(0x1a1a2e, 30, 55);
+
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(1.5, PLAYER_HEIGHT, 1.5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.5;
+        document.body.appendChild(renderer.domElement);
+
+        // ==================== 灯光 ====================
+        const ambient = new THREE.AmbientLight(0x404080, 0.8);
+        scene.add(ambient);
+
+        const dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+        dirLight.position.set(10, 25, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        const fillLight = new THREE.DirectionalLight(0x4488ff, 0.5);
+        fillLight.position.set(-10, 10, -15);
+        scene.add(fillLight);
+
+        const hemiLight = new THREE.HemisphereLight(0x4466ff, 0xaa8866, 0.6);
+        scene.add(hemiLight);
+
+        // ==================== 迷宫构建 ====================
+        let mazeData = null;
+        let wallGroup = new THREE.Group();
+        let floorGroup = new THREE.Group();
+        let ceilingGroup = new THREE.Group();
+        let exitMarker = null;
+
+        function buildMaze(size) {
+            // 清理旧迷宫
+            scene.remove(wallGroup);
+            scene.remove(floorGroup);
+            scene.remove(ceilingGroup);
+            if (exitMarker) {
+                scene.remove(exitMarker);
+                exitMarker = null;
+            }
+            wallGroup = new THREE.Group();
+            floorGroup = new THREE.Group();
+            ceilingGroup = new THREE.Group();
+
+            const { grid, start, end } = generateMaze(size);
+            mazeData = { grid, start, end };
+            const gridSize = grid.length;
+            const offset = (gridSize - 1) * CELL_SIZE / 2;
+
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x8a7a6a, roughness: 0.8, metalness: 0.1 });
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x4a5a4a, roughness: 0.9, metalness: 0.0 });
+            const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x3a3a4a, roughness: 0.9, metalness: 0.0, side: THREE
+                    .BackSide });
+
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const x = c * CELL_SIZE - offset;
+                    const z = r * CELL_SIZE - offset;
+                    const isWall = grid[r][c] === 1;
+
+                    const floorGeo = new THREE.PlaneGeometry(CELL_SIZE, CELL_SIZE);
+                    const floor = new THREE.Mesh(floorGeo, floorMat);
+                    floor.rotation.x = -Math.PI / 2;
+                    floor.position.set(x, 0, z);
+                    floor.receiveShadow = true;
+                    floorGroup.add(floor);
+
+                    const ceilGeo = new THREE.PlaneGeometry(CELL_SIZE, CELL_SIZE);
+                    const ceil = new THREE.Mesh(ceilGeo, ceilingMat);
+                    ceil.rotation.x = Math.PI / 2;
+                    ceil.position.set(x, WALL_HEIGHT, z);
+                    ceilingGroup.add(ceil);
+
+                    if (isWall) {
+                        const wallGeo = new THREE.BoxGeometry(CELL_SIZE, WALL_HEIGHT, CELL_SIZE);
+                        const wall = new THREE.Mesh(wallGeo, wallMat);
+                        wall.position.set(x, WALL_HEIGHT / 2, z);
+                        wall.castShadow = true;
+                        wall.receiveShadow = true;
+                        wallGroup.add(wall);
+                    }
+                }
+            }
+
+            scene.add(wallGroup);
+            scene.add(floorGroup);
+            scene.add(ceilingGroup);
+
+            // 出口标记
+            const endX = end.x * CELL_SIZE - offset;
+            const endZ = end.y * CELL_SIZE - offset;
+            const markerGroup = new THREE.Group();
+
+            const pillarMat = new THREE.MeshStandardMaterial({
+                color: 0xffaa00,
+                emissive: 0xff8800,
+                emissiveIntensity: 1.0,
+                transparent: true,
+                opacity: 0.8,
+            });
+            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, WALL_HEIGHT * 1.2, 8), pillarMat);
+            pillar.position.set(0, WALL_HEIGHT * 0.6, 0);
+            markerGroup.add(pillar);
+
+            const ringMat = new THREE.MeshStandardMaterial({
+                color: 0xffaa00,
+                emissive: 0xff8800,
+                emissiveIntensity: 1.2,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide,
+            });
+            const ring = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.9, 32), ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.set(0, 0.05, 0);
+            markerGroup.add(ring);
+
+            const particleCount = 50;
+            const positions = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 0.5 + Math.random() * 1.2;
+                const height = Math.random() * WALL_HEIGHT;
+                positions[i * 3] = Math.cos(angle) * radius;
+                positions[i * 3 + 1] = height;
+                positions[i * 3 + 2] = Math.sin(angle) * radius;
+            }
+            const particleGeo = new THREE.BufferGeometry();
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particleMat = new THREE.PointsMaterial({
+                color: 0xffaa44,
+                size: 0.12,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+            });
+            const particles = new THREE.Points(particleGeo, particleMat);
+            markerGroup.add(particles);
+
+            markerGroup.position.set(endX, 0, endZ);
+            exitMarker = markerGroup;
+            scene.add(exitMarker);
+
+            // 起点光晕
+            const startXPos = start.x * CELL_SIZE - offset;
+            const startZPos = start.y * CELL_SIZE - offset;
+            const startLight = new THREE.PointLight(0x44ff88, 0.8, 6);
+            startLight.position.set(startXPos, 0.5, startZPos);
+            scene.add(startLight);
+            if (window._startLight) scene.remove(window._startLight);
+            window._startLight = startLight;
+
+            // 重置玩家位置
+            camera.position.set(startXPos + 0.5, PLAYER_HEIGHT, startZPos + 0.5);
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = 0;
+            camera.rotation.x = 0;
+
+            document.getElementById('win-message').style.display = 'none';
+            document.getElementById('restart-btn').style.display = 'none';
+            isWin = false;
+            isMovingForward = false;
+            isMovingBackward = false;
+            isMovingLeft = false;
+            isMovingRight = false;
+            isSprinting = false;
+
+            // 更新尺寸标签
+            document.getElementById('size-badge').textContent = size + 'x' + size;
+        }
+
+        // ==================== 控制 ====================
+        let isLocked = false;
+        let isMovingForward = false,
+            isMovingBackward = false,
+            isMovingLeft = false,
+            isMovingRight = false;
+        let isSprinting = false;
+
+        renderer.domElement.addEventListener('click', () => {
+            if (!isLocked) renderer.domElement.requestPointerLock();
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            isLocked = document.pointerLockElement === renderer.domElement;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isLocked) return;
+            camera.rotation.y -= (e.movementX || 0) * MOUSE_SENSITIVITY;
+            camera.rotation.x -= (e.movementY || 0) * MOUSE_SENSITIVITY;
+            camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, camera.rotation.x));
+        });
+
+        document.addEventListener('keydown', (e) => {
+            switch (e.code) {
+                case 'KeyW':
+                    isMovingForward = true;
+                    e.preventDefault();
+                    break;
+                case 'KeyS':
+                    isMovingBackward = true;
+                    e.preventDefault();
+                    break;
+                case 'KeyA':
+                    isMovingLeft = true;
+                    e.preventDefault();
+                    break;
+                case 'KeyD':
+                    isMovingRight = true;
+                    e.preventDefault();
+                    break;
+                case 'ShiftLeft':
+                case 'ShiftRight':
+                    isSprinting = true;
+                    e.preventDefault();
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            switch (e.code) {
+                case 'KeyW':
+                    isMovingForward = false;
+                    e.preventDefault();
+                    break;
+                case 'KeyS':
+                    isMovingBackward = false;
+                    e.preventDefault();
+                    break;
+                case 'KeyA':
+                    isMovingLeft = false;
+                    e.preventDefault();
+                    break;
+                case 'KeyD':
+                    isMovingRight = false;
+                    e.preventDefault();
+                    break;
+                case 'ShiftLeft':
+                case 'ShiftRight':
+                    isSprinting = false;
+                    e.preventDefault();
+                    break;
+            }
+        });
+
+        // ==================== 碰撞 ====================
+        function canMoveTo(x, z) {
+            if (!mazeData) return false;
+            const { grid } = mazeData;
+            const size = grid.length;
+            const offset = (size - 1) * CELL_SIZE / 2;
+            const half = 0.3;
+            const corners = [
+                [x - half, z - half],
+                [x + half, z - half],
+                [x - half, z + half],
+                [x + half, z + half]
+            ];
+            for (const [cx, cz] of corners) {
+                const col = Math.round((cx + offset) / CELL_SIZE);
+                const row = Math.round((cz + offset) / CELL_SIZE);
+                if (row < 0 || row >= size || col < 0 || col >= size) return false;
+                if (grid[row][col] === 1) return false;
+            }
+            return true;
+        }
+
+        // ==================== 胜利 ====================
+        let isWin = false;
+
+        function winGame() {
+            if (isWin) return;
+            isWin = true;
+            document.getElementById('win-message').style.display = 'block';
+            document.getElementById('restart-btn').style.display = 'block';
+            document.exitPointerLock();
+            isLocked = false;
+        }
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            isWin = false;
+            buildMaze(MAZE_SIZE);
+            renderer.domElement.click();
+        });
+
+        // ==================== 难度切换 ====================
+        document.querySelectorAll('.difficulty-selector button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.difficulty-selector button').forEach(b => b.classList.remove(
+                'active'));
+                btn.classList.add('active');
+                MAZE_SIZE = parseInt(btn.dataset.size);
+                isWin = false;
+                buildMaze(MAZE_SIZE);
+                renderer.domElement.click();
+            });
+        });
+
+        // ==================== 循环 ====================
+        const clock = new THREE.Clock();
+
+        function animate() {
+            const dt = Math.min(clock.getDelta(), 0.05);
+            if (isLocked && mazeData && !isWin) {
+                const speed = (isSprinting ? MOVE_SPEED * SPRINT_MULTIPLIER : MOVE_SPEED) * dt;
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                forward.y = 0;
+                forward.normalize();
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                right.y = 0;
+                right.normalize();
+
+                let mx = 0,
+                    mz = 0;
+                if (isMovingForward) { mx += forward.x;
+                    mz += forward.z; }
+                if (isMovingBackward) { mx -= forward.x;
+                    mz -= forward.z; }
+                if (isMovingLeft) { mx -= right.x;
+                    mz -= right.z; }
+                if (isMovingRight) { mx += right.x;
+                    mz += right.z; }
+
+                if (mx !== 0 || mz !== 0) {
+                    const len = Math.sqrt(mx * mx + mz * mz);
+                    mx /= len;
+                    mz /= len;
+                    const newX = camera.position.x + mx * speed;
+                    const newZ = camera.position.z + mz * speed;
+                    if (canMoveTo(newX, camera.position.z)) camera.position.x = newX;
+                    if (canMoveTo(camera.position.x, newZ)) camera.position.z = newZ;
+                }
+
+                if (exitMarker) {
+                    const endPos = exitMarker.position;
+                    const dist = new THREE.Vector3(camera.position.x - endPos.x, 0, camera.position.z - endPos.z).length();
+                    if (dist < 1.2) winGame();
+                }
+            }
+
+            // 出口动画
+            if (exitMarker) {
+                const t = Date.now() / 1000;
+                const ring = exitMarker.children[1];
+                if (ring) {
+                    ring.rotation.z = t * 0.5;
+                    ring.material.opacity = 0.4 + Math.sin(t * 2) * 0.2;
+                }
+                const particles = exitMarker.children[2];
+                if (particles) particles.rotation.y = t * 0.3;
+                const pillar = exitMarker.children[0];
+                if (pillar) pillar.material.emissiveIntensity = 0.6 + Math.sin(t * 3) * 0.3;
+            }
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+
+        // ==================== 启动 ====================
+        buildMaze(MAZE_SIZE);
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        console.log('🧭 困难迷宫已加载，点击画面锁定鼠标开始探险！');
+    </script>
+</body>
+</html>
